@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema POS · Gestión de Inventario</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap');
+
+  :root {
+    --bg: #101c1f;
+    --surface: #16262a;
+    --surface-alt: #1d3136;
+    --border: #24393e;
+    --text: #edede5;
+    --text-dim: #93a5a8;
+    --accent: #e8a33d;
+    --accent-dim: #b9822f;
+    --success: #4caf6d;
+    --danger: #d9534f;
+    --radius: 10px;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+  h1, h2, h3, .marca { font-family: 'Sora', sans-serif; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+
+  .app-shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 232px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .sidebar .marca { font-size: 18px; color: var(--accent); padding: 0 12px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .sidebar a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius); color: var(--text-dim); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .sidebar a:hover { background: var(--surface-alt); color: var(--text); }
+  .sidebar a.activo { background: var(--surface-alt); color: var(--accent); }
+  .sidebar .pie { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-dim); }
+  .sidebar .pie button { margin-top: 8px; width: 100%; }
+
+  .contenido { flex: 1; padding: 28px 36px; max-width: 1280px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+  .topbar .hora { color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+
+  .tarjeta { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .grid-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .kpi .etiqueta { color: var(--text-dim); font-size: 13px; }
+  .kpi .valor { font-family: var(--mono); font-size: 26px; margin-top: 6px; }
+  .kpi.alerta .valor { color: var(--danger); }
+  .kpi.positivo .valor { color: var(--success); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--text-dim); font-weight: 500; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: var(--surface-alt); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius); border: none; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn-primario { background: var(--accent); color: #1a1408; }
+  .btn-primario:hover { background: var(--accent-dim); }
+  .btn-secundario { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); }
+  .btn-peligro { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  input, select, textarea { background: var(--surface-alt); border: 1px solid var(--border); color: var(--text); padding: 10px 12px; border-radius: var(--radius); font-size: 14px; width: 100%; font-family: inherit; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  label { font-size: 13px; color: var(--text-dim); display: block; margin-bottom: 6px; }
+  .campo { margin-bottom: 14px; }
+
+  .badge { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.bajo { background: rgba(217,83,79,.15); color: var(--danger); }
+  .badge.ok { background: rgba(76,175,109,.15); color: var(--success); }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 420px; max-width: 92vw; max-height: 88vh; overflow-y: auto; }
+  .modal h2 { margin-bottom: 18px; font-size: 18px; }
+  .oculto { display: none !important; }
+
+  .barra-busqueda { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .barra-busqueda input, .barra-busqueda select { width: auto; flex: 1; min-width: 160px; }
+
+  /* Login */
+  .pantalla-login { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .caja-login { width: 340px; }
+  .caja-login .marca { text-align: center; font-size: 22px; margin-bottom: 4px; }
+  .caja-login .subtitulo { text-align: center; color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+  .error-login { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .credenciales-demo { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-dim); }
+
+  /* POS */
+  .pos-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+  #entrada-codigo { font-size: 18px; padding: 14px; }
+  .fila-ticket { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .fila-ticket .cantidad { color: var(--text-dim); font-family: var(--mono); }
+  .resumen-total { font-family: var(--mono); font-size: 32px; text-align: right; margin: 4px 0 16px; }
+  .metodos-pago { display: flex; gap: 8px; margin-bottom: 16px; }
+  .metodos-pago button { flex: 1; }
+  .metodos-pago button.activo { background: var(--accent); color: #1a1408; }
+
+  /* Verificador de precios */
+  .pantalla-verificador { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px; }
+  .pantalla-verificador .nombre-producto { font-size: 42px; margin: 20px 0 10px; }
+  .pantalla-verificador .precio-producto { font-family: var(--mono); font-size: 72px; color: var(--accent); }
+  .pantalla-verificador input { font-size: 22px; padding: 18px; text-align: center; max-width: 420px; }
+
+  /* Gráfico de barras simple */
+  .grafico-barras { display: flex; align-items: flex-end; gap: 8px; height: 160px; }
+  .grafico-barras .barra-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .grafico-barras .barra { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .grafico-barras .etiqueta-hora { font-size: 11px; color: var(--text-dim); margin-top: 6px; font-family: var(--mono); }
+
+  @media (max-width: 860px) {
+    .app-shell { flex-direction: column; }
+    .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding: 12px; }
+    .sidebar .marca, .sidebar .pie { display: none; }
+    .pos-layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="raiz"></div>
+
+<script>
+/* =========================================================================
+   SISTEMA POS + INVENTARIO — APLICACIÓN AUTOCONTENIDA (1 solo archivo HTML)
+   -------------------------------------------------------------------------
+   - Persistencia: localStorage, simulando las tablas de un esquema relacional
+     (ver comentarios en ApiService para el equivalente SQL de cada entidad).
+   - Capa ApiService: expone métodos async/await como si fueran peticiones a
+     un backend real. Para conectar un backend de verdad (Node/Express, PHP,
+     Firebase, etc.), solo hay que reemplazar el CUERPO de cada método por un
+     fetch() a tu API — el resto de la app no necesita cambiar.
+   - Para usarlo en red local (LAN): sirve esta carpeta con cualquier
+     servidor estático, por ejemplo `npx serve .` o `python -m http.server`,
+     y accede desde otras terminales a http://IP-DE-ESTA-PC:PUERTO/
+     (cada terminal guarda su propia sesión/carrito en su navegador; si
+     necesitas que TODAS las terminales compartan el mismo inventario en
+     tiempo real, reemplaza ApiService por llamadas a un backend central).
+   ========================================================================= */
+
+  // ---------------------------------------------------------------------
+  // Utilidades generales
+  // ---------------------------------------------------------------------
+  const $ = (selector, contenedor = document) => contenedor.querySelector(selector);
+  const $$ = (selector, contenedor = document) => [...contenedor.querySelectorAll(selector)];
+  const demorar = (ms = 180) => new Promise(resolve => setTimeout(resolve, ms));
+  const formatoMoneda = (numero) => `$${Number(numero || 0).toFixed(2)}`;
+  const generarId = (lista) => (lista.length ? Math.max(...lista.map(e => e.id)) + 1 : 1);
+  const generarFolio = () => `V-${Date.now()}`;
+  const hoyISO = () => new Date().toISOString().slice(0, 10);
+
+  // Hash simple SOLO para esta demo local (NO usar en producción).
+  // En un backend real, esto se reemplaza por bcrypt/argon2 del lado del servidor.
+  function hashSimple(texto) {
+    let hash = 0;
+    for (let i = 0; i < texto.length; i++) hash = (hash * 31 + texto.charCodeAt(i)) >>> 0;
+    return `h${hash}`;
+  }
+
+  // ---------------------------------------------------------------------
+  // Capa de "base de datos" en localStorage
+  // ---------------------------------------------------------------------
+  const TABLAS = {
+    usuarios: 'pos_usuarios',                    // usuarios(id, nombre_completo, usuario, password_hash, rol, activo)
+    productos: 'pos_productos',                  // productos(id, codigo_barras, nombre, descripcion, categoria, precio_compra, precio_venta, stock_actual, stock_minimo, activo)
+    movimientosInventario: 'pos_mov_inventario',  // movimientos_inventario(id, producto_id, usuario_id, tipo, cantidad, motivo, fecha)
+    turnos: 'pos_turnos',                         // turnos(id, usuario_id, fondo_inicial, estado, total_ingresos, total_egresos, total_ventas, efectivo_esperado, efectivo_contado, diferencia, abierto_en, cerrado_en)
+    movimientosCaja: 'pos_mov_caja',              // movimientos_caja(id, turno_id, tipo, monto, concepto, fecha)
+    cortesDiarios: 'pos_cortes_diarios',          // cortes_diarios(id, fecha, total_ventas, total_efectivo, total_tarjeta, total_transferencia, numero_turnos)
+    ventas: 'pos_ventas',                         // ventas(id, folio, usuario_id, turno_id, total, metodo_pago, monto_recibido, cambio, cancelada, fecha)
+    detalleVentas: 'pos_detalle_ventas',          // detalle_ventas(id, venta_id, producto_id, cantidad, precio_unitario, subtotal)
+    configuracion: 'pos_configuracion'            // configuracion(clave -> valor), guardado como objeto único
+  };
+
+  function leerTabla(clave) { return JSON.parse(localStorage.getItem(clave) || '[]'); }
+  function escribirTabla(clave, datos) { localStorage.setItem(clave, JSON.stringify(datos)); }
+
+  function sembrarDatosIniciales() {
+    if (leerTabla(TABLAS.usuarios).length) return; // ya existen datos, no volver a sembrar
+
+    escribirTabla(TABLAS.usuarios, [
+      { id: 1, nombre_completo: 'Administrador General', usuario: 'admin', password_hash: hashSimple('admin123'), rol: 'administrador', activo: true },
+      { id: 2, nombre_completo: 'Cajero Uno', usuario: 'cajero', password_hash: hashSimple('cajero123'), rol: 'cajero', activo: true },
+      { id: 3, nombre_completo: 'Encargado de Almacén', usuario: 'almacen', password_hash: hashSimple('almacen123'), rol: 'almacen', activo: true }
+    ]);
+
+    escribirTabla(TABLAS.productos, [
+      { id: 1, codigo_barras: '7501000000018', nombre: 'Refresco de cola 600ml', descripcion: '', categoria: 'Bebidas', precio_compra: 10, precio_venta: 18, stock_actual: 48, stock_minimo: 12, activo: true },
+      { id: 2, codigo_barras: '7501000000025', nombre: 'Bolsa de papas fritas', descripcion: '', categoria: 'Botanas', precio_compra: 8, precio_venta: 15, stock_actual: 6, stock_minimo: 10, activo: true },
+      { id: 3, codigo_barras: '7501000000032', nombre: 'Agua embotellada 1L', descripcion: '', categoria: 'Bebidas', precio_compra: 5, precio_venta: 12, stock_actual: 60, stock_minimo: 15, activo: true },
+      { id: 4, codigo_barras: '7501000000049', nombre: 'Chocolate barra', descripcion: '', categoria: 'Dulces', precio_compra: 6, precio_venta: 14, stock_actual: 3, stock_minimo: 8, activo: true }
+    ]);
+
+    escribirTabla(TABLAS.movimientosInventario, []);
+    escribirTabla(TABLAS.turnos, []);
+    escribirTabla(TABLAS.movimientosCaja, []);
+    escribirTabla(TABLAS.cortesDiarios, []);
+    escribirTabla(TABLAS.ventas, []);
+    escribirTabla(TABLAS.detalleVentas, []);
+    escribirTabla(TABLAS.configuracion, { nombre_tienda: 'Mi Tienda', direccion: '', telefono: '', moneda: 'MXN' });
+  }
+
+  // ---------------------------------------------------------------------
+  // ApiService — misma "forma" que tendría un cliente hablando con una API real.
+  // Cada método está comentado con el endpoint REST equivalente para cuando
+  // se conecte un backend de verdad.
+  // ---------------------------------------------------------------------
+  const ApiService = {
+
+    Auth: {
+      // Equivale a: POST /api/auth/login
+      async iniciarSesion(usuario, password) {
+        await demorar();
+        const cuenta = leerTabla(TABLAS.usuarios).find(u => u.usuario === usuario && u.activo);
+        if (!cuenta || cuenta.password_hash !== hashSimple(password)) {
+          throw new Error('Usuario o contraseña incorrectos');
+        }
+        return { id: cuenta.id, nombre: cuenta.nombre_completo, rol: cuenta.rol };
+      }
+    },
+
+    Productos: {
+      // Equivale a: GET /api/productos?buscar=&categoria=
+      async listar({ buscar = '', categoria = '' } = {}) {
+        await demorar();
+        return leerTabla(TABLAS.productos).filter(p =>
+          p.activo &&
+          (!buscar || p.nombre.toLowerCase().includes(buscar.toLowerCase()) || p.codigo_barras.includes(buscar)) &&
+          (!categoria || p.categoria === categoria)
+        );
+      },
+      // Equivale a: GET /api/productos/codigo/:codigo
+      async buscarPorCodigo(codigo) {
+        await demorar(80);
+        const producto = leerTabla(TABLAS.productos).find(p => p.codigo_barras === codigo && p.activo);
+        if (!producto) throw new Error('Producto no encontrado');
+        return producto;
+      },
+      // Equivale a: POST /api/productos
+      async crear(datos) {
+        await demorar();
+        const productos = leerTabla(TABLAS.productos);
+        const nuevo = { id: generarId(productos), activo: true, stock_actual: 0, ...datos };
+        productos.push(nuevo);
+        escribirTabla(TABLAS.productos, productos);
+        return nuevo;
+      },
+      // Equivale a: PUT /api/productos/:id
+      async actualizar(id, datos) {
+        await demorar();
+        const productos = leerTabla(TABLAS.productos);
+        const indice = productos.findIndex(p => p.id === id);
+        if (indice === -1) throw new Error('Producto no encontrado');
+        productos[indice] = { ...productos[indice], ...datos };
+        escribirTabla(TABLAS.productos, productos);
+        return productos[indice];
+      },
+      // Equivale a: DELETE /api/productos/:id (baja lógica)
+      async eliminar(id) {
+        await demorar();
+        const productos = leerTabla(TABLAS.productos);
+        const indice = productos.findIndex(p => p.id === id);
+        if (indice !== -1) { productos[indice].activo = false; escribirTabla(TABLAS.productos, productos); }
+      },
+      // Equivale a: POST /api/productos/:id/entrada
+      async registrarEntrada(productoId, cantidad, motivo, usuarioId) {
+        await demorar();
+        const productos = leerTabla(TABLAS.productos);
+        const indice = productos.findIndex(p => p.id === productoId);
+        if (indice === -1) throw new Error('Producto no encontrado');
+        productos[indice].stock_actual += Number(cantidad);
+        escribirTabla(TABLAS.productos, productos);
+
+        const movimientos = leerTabla(TABLAS.movimientosInventario);
+        movimientos.push({ id: generarId(movimientos), producto_id: productoId, usuario_id: usuarioId, tipo: 'entrada', cantidad: Number(cantidad), motivo, fecha: new Date().toISOString() });
+        escribirTabla(TABLAS.movimientosInventario, movimientos);
+        return productos[indice];
+      },
+      // Equivale a: GET /api/productos/alertas/bajo-stock
+      async alertasBajoStock() {
+        await demorar();
+        return leerTabla(TABLAS.productos).filter(p => p.activo && p.stock_actual <= p.stock_minimo);
+      },
+      async categorias() {
+        await demorar(60);
+        return [...new Set(leerTabla(TABLAS.productos).map(p => p.categoria).filter(Boolean))];
+      }
+    },
+
+    Ventas: {
+      // Equivale a: POST /api/ventas — registra venta, detalle y descuenta stock en una sola transacción
+      async crear({ turnoId, items, metodoPago, montoRecibido, usuarioId }) {
+        await demorar(250);
+        const productos = leerTabla(TABLAS.productos);
+        for (const item of items) {
+          const producto = productos.find(p => p.id === item.producto_id);
+          if (!producto || producto.stock_actual < item.cantidad) {
+            throw new Error(`Stock insuficiente para "${producto ? producto.nombre : 'producto'}"`);
+          }
+        }
+
+        const total = items.reduce((suma, i) => suma + i.cantidad * i.precio_unitario, 0);
+        const cambio = metodoPago === 'efectivo' ? Math.max(montoRecibido - total, 0) : 0;
+
+        const ventas = leerTabla(TABLAS.ventas);
+        const venta = { id: generarId(ventas), folio: generarFolio(), usuario_id: usuarioId, turno_id: turnoId, total, metodo_pago: metodoPago, monto_recibido: montoRecibido, cambio, cancelada: false, fecha: new Date().toISOString() };
+        ventas.push(venta);
+        escribirTabla(TABLAS.ventas, ventas);
+
+        const detalle = leerTabla(TABLAS.detalleVentas);
+        const movimientos = leerTabla(TABLAS.movimientosInventario);
+        for (const item of items) {
+          detalle.push({ id: generarId(detalle), venta_id: venta.id, producto_id: item.producto_id, cantidad: item.cantidad, precio_unitario: item.precio_unitario, subtotal: item.cantidad * item.precio_unitario });
+          const indiceProd = productos.findIndex(p => p.id === item.producto_id);
+          productos[indiceProd].stock_actual -= item.cantidad;
+          movimientos.push({ id: generarId(movimientos), producto_id: item.producto_id, usuario_id: usuarioId, tipo: 'salida', cantidad: item.cantidad, motivo: `Venta ${venta.folio}`, fecha: new Date().toISOString() });
+        }
+        escribirTabla(TABLAS.detalleVentas, detalle);
+        escribirTabla(TABLAS.productos, productos);
+        escribirTabla(TABLAS.movimientosInventario, movimientos);
+
+        const turnos = leerTabla(TABLAS.turnos);
+        const indiceTurno = turnos.findIndex(t => t.id === turnoId);
+        turnos[indiceTurno].total_ventas += total;
+        escribirTabla(TABLAS.turnos, turnos);
+
+        return venta;
+      },
+      // Equivale a: GET /api/ventas/hoy — ventas agrupadas por hora, para el dashboard
+      async hoy() {
+        await demorar();
+        const ventasHoy = leerTabla(TABLAS.ventas).filter(v => v.fecha.slice(0, 10) === hoyISO() && !v.cancelada);
+        const porHora = {};
+        ventasHoy.forEach(v => {
+          const hora = new Date(v.fecha).getHours();
+          porHora[hora] = (porHora[hora] || 0) + v.total;
+        });
+        return {
+          total: ventasHoy.reduce((s, v) => s + v.total, 0),
+          transacciones: ventasHoy.length,
+          porHora
+        };
+      }
+    },
+
+    Turnos: {
+      // Equivale a: POST /api/turnos/abrir
+      async abrir(usuarioId, fondoInicial) {
+        await demorar();
+        const turnos = leerTabla(TABLAS.turnos);
+        const nuevo = { id: generarId(turnos), usuario_id: usuarioId, fondo_inicial: Number(fondoInicial), estado: 'abierto', total_ingresos: 0, total_egresos: 0, total_ventas: 0, efectivo_esperado: null, efectivo_contado: null, diferencia: null, abierto_en: new Date().toISOString(), cerrado_en: null };
+        turnos.push(nuevo);
+        escribirTabla(TABLAS.turnos, turnos);
+        return nuevo;
+      },
+      async turnoAbiertoDe(usuarioId) {
+        await demorar(60);
+        return leerTabla(TABLAS.turnos).find(t => t.usuario_id === usuarioId && t.estado === 'abierto') || null;
+      },
+      // Equivale a: POST /api/turnos/:id/movimiento
+      async registrarMovimiento(turnoId, tipo, monto, concepto) {
+        await demorar();
+        const movimientos = leerTabla(TABLAS.movimientosCaja);
+        movimientos.push({ id: generarId(movimientos), turno_id: turnoId, tipo, monto: Number(monto), concepto, fecha: new Date().toISOString() });
+        escribirTabla(TABLAS.movimientosCaja, movimientos);
+
+        const turnos = leerTabla(TABLAS.turnos);
+        const indice = turnos.findIndex(t => t.id === turnoId);
+        if (tipo === 'ingreso') turnos[indice].total_ingresos += Number(monto);
+        else turnos[indice].total_egresos += Number(monto);
+        escribirTabla(TABLAS.turnos, turnos);
+        return turnos[indice];
+      },
+      // Equivale a: POST /api/turnos/:id/cerrar — corte parcial con arqueo
+      async cerrar(turnoId, efectivoContado) {
+        await demorar();
+        const turnos = leerTabla(TABLAS.turnos);
+        const indice = turnos.findIndex(t => t.id === turnoId);
+        const t = turnos[indice];
+        const efectivoEsperado = Number(t.fondo_inicial) + Number(t.total_ventas) + Number(t.total_ingresos) - Number(t.total_egresos);
+        t.estado = 'cerrado';
+        t.efectivo_esperado = efectivoEsperado;
+        t.efectivo_contado = Number(efectivoContado);
+        t.diferencia = Number(efectivoContado) - efectivoEsperado;
+        t.cerrado_en = new Date().toISOString();
+        escribirTabla(TABLAS.turnos, turnos);
+        return t;
+      },
+      // Equivale a: POST /api/turnos/corte-diario — corte total del día (todas las cajas)
+      async corteDiario() {
+        await demorar();
+        const ventasHoy = leerTabla(TABLAS.ventas).filter(v => v.fecha.slice(0, 10) === hoyISO() && !v.cancelada);
+        const turnosHoy = leerTabla(TABLAS.turnos).filter(t => t.abierto_en.slice(0, 10) === hoyISO());
+        const resumen = {
+          fecha: hoyISO(),
+          total_ventas: ventasHoy.reduce((s, v) => s + v.total, 0),
+          total_efectivo: ventasHoy.filter(v => v.metodo_pago === 'efectivo').reduce((s, v) => s + v.total, 0),
+          total_tarjeta: ventasHoy.filter(v => v.metodo_pago === 'tarjeta').reduce((s, v) => s + v.total, 0),
+          total_transferencia: ventasHoy.filter(v => v.metodo_pago === 'transferencia').reduce((s, v) => s + v.total, 0),
+          numero_turnos: turnosHoy.length
+        };
+        const cortes = leerTabla(TABLAS.cortesDiarios);
+        const indiceExistente = cortes.findIndex(c => c.fecha === resumen.fecha);
+        const registro = { id: indiceExistente !== -1 ? cortes[indiceExistente].id : generarId(cortes), ...resumen };
+        if (indiceExistente !== -1) cortes[indiceExistente] = registro; else cortes.push(registro);
+        escribirTabla(TABLAS.cortesDiarios, cortes);
+        return registro;
+      },
+      async listarTurnos() {
+        await demorar();
+        return leerTabla(TABLAS.turnos).sort((a, b) => new Date(b.abierto_en) - new Date(a.abierto_en));
+      }
+    },
+
+    Usuarios: {
+      async listar() { await demorar(); return leerTabla(TABLAS.usuarios); },
+      async crear(datos) {
+        await demorar();
+        const usuarios = leerTabla(TABLAS.usuarios);
+        if (usuarios.some(u => u.usuario === datos.usuario)) throw new Error('Ese nombre de usuario ya existe');
+        const nuevo = { id: generarId(usuarios), activo: true, ...datos, password_hash: hashSimple(datos.password) };
+        delete nuevo.password;
+        usuarios.push(nuevo);
+        escribirTabla(TABLAS.usuarios, usuarios);
+        return nuevo;
+      },
+      async actualizar(id, datos) {
+        await demorar();
+        const usuarios = leerTabla(TABLAS.usuarios);
+        const indice = usuarios.findIndex(u => u.id === id);
+        const cambios = { ...datos };
+        if (cambios.password) { cambios.password_hash = hashSimple(cambios.password); delete cambios.password; }
+        usuarios[indice] = { ...usuarios[indice], ...cambios };
+        escribirTabla(TABLAS.usuarios, usuarios);
+        return usuarios[indice];
+      },
+      async eliminar(id) {
+        await demorar();
+        const usuarios = leerTabla(TABLAS.usuarios);
+        const indice = usuarios.findIndex(u => u.id === id);
+        if (indice !== -1) { usuarios[indice].activo = false; escribirTabla(TABLAS.usuarios, usuarios); }
+      }
+    },
+
+    Configuracion: {
+      async obtener() { await demorar(60); return leerTabla(TABLAS.configuracion) && JSON.parse(localStorage.getItem(TABLAS.configuracion) || '{}'); },
+      async actualizar(datos) {
+        await demorar();
+        const actual = JSON.parse(localStorage.getItem(TABLAS.configuracion) || '{}');
+        const nuevo = { ...actual, ...datos };
+        localStorage.setItem(TABLAS.configuracion, JSON.stringify(nuevo));
+        return nuevo;
+      }
+    }
+  };
+
+  // ---------------------------------------------------------------------
+  // Estado de la aplicación (sesión activa, carrito de venta en curso)
+  // ---------------------------------------------------------------------
+  const Estado = {
+    usuario: JSON.parse(sessionStorage.getItem('pos_sesion') || 'null'),
+    turno: null,
+    carrito: [],
+    metodoPago: 'efectivo'
+  };
+
+  function iniciarSesionEstado(usuario) {
+    Estado.usuario = usuario;
+    sessionStorage.setItem('pos_sesion', JSON.stringify(usuario));
+  }
+  function cerrarSesionEstado() {
+    Estado.usuario = null;
+    Estado.turno = null;
+    sessionStorage.removeItem('pos_sesion');
+    navegarA('login');
+  }
+
+  // ---------------------------------------------------------------------
+  // Router muy simple basado en un estado en memoria (sin hash) + permisos
+  // ---------------------------------------------------------------------
+  const RUTAS_POR_ROL = {
+    administrador: ['dashboard', 'pos', 'caja', 'inventario', 'usuarios', 'verificador', 'configuracion'],
+    cajero: ['pos', 'caja', 'verificador'],
+    almacen: ['inventario', 'verificador']
+  };
+  const ICONOS = { dashboard: '📊', pos: '🛒', caja: '💰', inventario: '📦', usuarios: '👥', verificador: '🔍', configuracion: '⚙️' };
+  const TITULOS = { dashboard: 'Dashboard', pos: 'Punto de venta', caja: 'Caja y turnos', inventario: 'Inventario', usuarios: 'Usuarios', verificador: 'Verificador de precios', configuracion: 'Configuración' };
+
+  let vistaActual = 'login';
+
+  function navegarA(vista) {
+    vistaActual = vista;
+    render();
+  }
+
+  // ---------------------------------------------------------------------
+  // Render principal
+  // ---------------------------------------------------------------------
+  async function render() {
+    const raiz = $('#raiz');
+    if (!Estado.usuario) { raiz.innerHTML = plantillaLogin(); adjuntarEventosLogin(); return; }
+
+    if (vistaActual === 'verificador') { raiz.innerHTML = await plantillaVerificador(); adjuntarEventosVerificador(); return; }
+
+    const permitidas = RUTAS_POR_ROL[Estado.usuario.rol] || [];
+    if (!permitidas.includes(vistaActual)) vistaActual = permitidas[0];
+
+    raiz.innerHTML = `
+      <div class="app-shell">
+        ${plantillaSidebar(permitidas)}
+        <main class="contenido">
+          <div class="topbar">
+            <h1>${TITULOS[vistaActual]}</h1>
+            <span class="hora" id="reloj"></span>
+          </div>
+          <div id="vista-contenido">Cargando…</div>
+        </main>
+      </div>`;
+    actualizarReloj();
+
+    const contenedor = $('#vista-contenido');
+    const renderizadores = { dashboard: renderDashboard, pos: renderPOS, caja: renderCaja, inventario: renderInventario, usuarios: renderUsuarios, configuracion: renderConfiguracion };
+    await renderizadores[vistaActual](contenedor);
+  }
+
+  function actualizarReloj() {
+    const nodo = $('#reloj');
+    if (!nodo) return;
+    nodo.textContent = new Date().toLocaleString('es-MX');
+  }
+  setInterval(actualizarReloj, 1000);
+
+  function plantillaSidebar(permitidas) {
+    return `
+      <nav class="sidebar">
+        <div class="marca">Sistema POS</div>
+        ${permitidas.map(ruta => `<a class="${ruta === vistaActual ? 'activo' : ''}" onclick="navegarA('${ruta}')">${ICONOS[ruta]} ${TITULOS[ruta]}</a>`).join('')}
+        <div class="pie">
+          ${Estado.usuario.nombre} · ${Estado.usuario.rol}
+          <button class="btn btn-secundario btn-sm" onclick="cerrarSesionEstado()">Cerrar sesión</button>
+        </div>
+      </nav>`;
+  }
+
+  // =========================================================================
+  // VISTA: LOGIN
+  // =========================================================================
+  function plantillaLogin() {
+    return `
+      <div class="pantalla-login">
+        <div class="tarjeta caja-login">
+          <div class="marca">Sistema POS</div>
+          <div class="subtitulo">Ingresa con tu cuenta de empleado</div>
+          <form id="form-login">
+            <div class="campo"><label for="campo-usuario">Usuario</label><input id="campo-usuario" autocomplete="username" required></div>
+            <div class="campo"><label for="campo-password">Contraseña</label><input id="campo-password" type="password" autocomplete="current-password" required></div>
+            <button class="btn btn-primario" style="width:100%" type="submit">Entrar</button>
+            <div class="error-login" id="error-login"></div>
+          </form>
+          <div class="credenciales-demo">
+            Cuentas de prueba: <b>admin/admin123</b> · <b>cajero/cajero123</b> · <b>almacen/almacen123</b>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function adjuntarEventosLogin() {
+    $('#form-login').addEventListener('submit', async (evento) => {
+      evento.preventDefault();
+      const usuario = $('#campo-usuario').value.trim();
+      const password = $('#campo-password').value;
+      const errorNodo = $('#error-login');
+      errorNodo.textContent = '';
+      try {
+        const cuenta = await ApiService.Auth.iniciarSesion(usuario, password);
+        iniciarSesionEstado(cuenta);
+        const destinos = { administrador: 'dashboard', cajero: 'pos', almacen: 'inventario' };
+        navegarA(destinos[cuenta.rol]);
+      } catch (err) {
+        errorNodo.textContent = err.message;
+      }
+    });
+  }
+
+  // =========================================================================
+  // VISTA: DASHBOARD
+  // =========================================================================
+  async function renderDashboard(contenedor) {
+    const [resumenVentas, alertas] = await Promise.all([ApiService.Ventas.hoy(), ApiService.Productos.alertasBajoStock()]);
+    const maxVenta = Math.max(...Object.values(resumenVentas.porHora), 1);
+    const barras = Array.from({ length: 24 }, (_, hora) => resumenVentas.porHora[hora] || 0);
+
+    contenedor.innerHTML = `
+      <div class="grid-kpi">
+        <div class="tarjeta kpi positivo"><div class="etiqueta">Ventas de hoy</div><div class="valor">${formatoMoneda(resumenVentas.total)}</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Transacciones</div><div class="valor">${resumenVentas.transacciones}</div></div>
+        <div class="tarjeta kpi alerta"><div class="etiqueta">Productos con bajo stock</div><div class="valor">${alertas.length}</div></div>
+      </div>
+      <div class="tarjeta" style="margin-bottom:24px;">
+        <h3 style="margin-bottom:16px;">Ventas por hora</h3>
+        <div class="grafico-barras">
+          ${barras.map((valor, hora) => `
+            <div class="barra-col">
+              <div class="barra" style="height:${Math.max((valor / maxVenta) * 100, 2)}%" title="${formatoMoneda(valor)}"></div>
+              <div class="etiqueta-hora">${hora}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="tarjeta">
+        <h3 style="margin-bottom:16px;">Alertas de inventario</h3>
+        <table>
+          <thead><tr><th>Producto</th><th>Stock actual</th><th>Mínimo</th><th>Estado</th></tr></thead>
+          <tbody>
+            ${alertas.length ? alertas.map(p => `
+              <tr><td>${p.nombre}</td><td>${p.stock_actual}</td><td>${p.stock_minimo}</td><td><span class="badge bajo">Bajo stock</span></td></tr>
+            `).join('') : '<tr><td colspan="4" style="color:var(--text-dim)">Sin alertas por el momento</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  // =========================================================================
+  // VISTA: PUNTO DE VENTA (POS)
+  // =========================================================================
+  async function renderPOS(contenedor) {
+    Estado.turno = await ApiService.Turnos.turnoAbiertoDe(Estado.usuario.id);
+
+    if (!Estado.turno) {
+      contenedor.innerHTML = `
+        <div class="tarjeta" style="max-width:420px;">
+          <h3 style="margin-bottom:10px;">Abre tu turno para empezar a vender</h3>
+          <p style="color:var(--text-dim); font-size:14px; margin-bottom:16px;">Ingresa el fondo inicial de caja con el que comienzas.</p>
+          <div class="campo"><label for="fondo-inicial">Fondo inicial</label><input id="fondo-inicial" type="number" step="0.01" value="0"></div>
+          <button class="btn btn-primario" id="btn-abrir-turno">Abrir turno</button>
+        </div>`;
+      $('#btn-abrir-turno').addEventListener('click', async () => {
+        Estado.turno = await ApiService.Turnos.abrir(Estado.usuario.id, $('#fondo-inicial').value);
+        renderPOS(contenedor);
+      });
+      return;
+    }
+
+    contenedor.innerHTML = `
+      <div class="pos-layout">
+        <div>
+          <div class="tarjeta" style="margin-bottom:16px;">
+            <input id="entrada-codigo" placeholder="Escanea o escribe el código de barras y presiona Enter…" autofocus>
+          </div>
+          <div class="tarjeta">
+            <div id="lista-ticket"></div>
+            <div id="ticket-vacio" style="color:var(--text-dim); text-align:center; padding:30px 0;">El ticket está vacío — escanea un producto para comenzar</div>
+          </div>
+        </div>
+        <div class="tarjeta" style="align-self:start;">
+          <div class="resumen-total" id="total-ticket">${formatoMoneda(0)}</div>
+          <div class="metodos-pago">
+            <button class="btn btn-secundario activo" data-metodo="efectivo">Efectivo</button>
+            <button class="btn btn-secundario" data-metodo="tarjeta">Tarjeta</button>
+            <button class="btn btn-secundario" data-metodo="transferencia">Transf.</button>
+          </div>
+          <div id="campo-recibido" class="campo"><label for="monto-recibido">Monto recibido</label><input id="monto-recibido" type="number" step="0.01"></div>
+          <div class="tarjeta" style="background:var(--surface-alt); margin-bottom:16px;">
+            <div style="color:var(--text-dim); font-size:13px;">Cambio</div>
+            <div style="font-family:var(--mono); font-size:20px;" id="cambio-calculado">${formatoMoneda(0)}</div>
+          </div>
+          <button class="btn btn-primario" style="width:100%; margin-bottom:8px;" id="btn-cobrar">Confirmar venta</button>
+        </div>
+      </div>`;
+
+    adjuntarEventosPOS();
+    pintarTicket();
+  }
+
+  function totalCarrito() { return Estado.carrito.reduce((s, i) => s + i.cantidad * i.precio_unitario, 0); }
+
+  function pintarTicket() {
+    const lista = $('#lista-ticket');
+    if (!lista) return;
+    $('#ticket-vacio').style.display = Estado.carrito.length ? 'none' : 'block';
+    lista.innerHTML = Estado.carrito.map((item, indice) => `
+      <div class="fila-ticket">
+        <span>${item.nombre}</span>
+        <span class="cantidad">x${item.cantidad}</span>
+        <span>${formatoMoneda(item.cantidad * item.precio_unitario)}</span>
+        <button class="btn btn-secundario btn-sm" onclick="quitarDelCarrito(${indice})">✕</button>
+      </div>`).join('');
+    $('#total-ticket').textContent = formatoMoneda(totalCarrito());
+    calcularCambio();
+  }
+
+  function quitarDelCarrito(indice) { Estado.carrito.splice(indice, 1); pintarTicket(); }
+
+  function calcularCambio() {
+    const campoRecibido = $('#monto-recibido');
+    const recibido = Number((campoRecibido && campoRecibido.value) || 0);
+    const cambio = Estado.metodoPago === 'efectivo' ? Math.max(recibido - totalCarrito(), 0) : 0;
+    const nodoCambio = $('#cambio-calculado');
+    if (nodoCambio) nodoCambio.textContent = formatoMoneda(cambio);
+  }
+
+  function adjuntarEventosPOS() {
+    $('#entrada-codigo').addEventListener('keydown', async (evento) => {
+      if (evento.key !== 'Enter') return;
+      const codigo = evento.target.value.trim();
+      evento.target.value = '';
+      if (!codigo) return;
+      try {
+        const producto = await ApiService.Productos.buscarPorCodigo(codigo);
+        if (producto.stock_actual < 1) throw new Error(`"${producto.nombre}" no tiene stock disponible`);
+        const existente = Estado.carrito.find(i => i.producto_id === producto.id);
+        if (existente) existente.cantidad += 1;
+        else Estado.carrito.push({ producto_id: producto.id, nombre: producto.nombre, cantidad: 1, precio_unitario: Number(producto.precio_venta) });
+        pintarTicket();
+      } catch (err) { alert(err.message); }
+    });
+
+    $$('.metodos-pago button').forEach(boton => {
+      boton.addEventListener('click', () => {
+        $$('.metodos-pago button').forEach(b => b.classList.remove('activo'));
+        boton.classList.add('activo');
+        Estado.metodoPago = boton.dataset.metodo;
+        $('#campo-recibido').style.display = Estado.metodoPago === 'efectivo' ? 'block' : 'none';
+        calcularCambio();
+      });
+    });
+
+    $('#monto-recibido').addEventListener('input', calcularCambio);
+
+    $('#btn-cobrar').addEventListener('click', async () => {
+      if (!Estado.carrito.length) return alert('Agrega al menos un producto');
+      const montoRecibido = Number($('#monto-recibido').value || totalCarrito());
+      if (Estado.metodoPago === 'efectivo' && montoRecibido < totalCarrito()) return alert('El monto recibido es menor al total');
+      try {
+        const venta = await ApiService.Ventas.crear({ turnoId: Estado.turno.id, items: Estado.carrito, metodoPago: Estado.metodoPago, montoRecibido, usuarioId: Estado.usuario.id });
+        alert(`Venta ${venta.folio} registrada. Cambio: ${formatoMoneda(venta.cambio)}`);
+        Estado.carrito = [];
+        $('#monto-recibido').value = '';
+        Estado.turno = await ApiService.Turnos.turnoAbiertoDe(Estado.usuario.id);
+        pintarTicket();
+      } catch (err) { alert(err.message); }
+    });
+  }
+
+  // =========================================================================
+  // VISTA: CAJA Y TURNOS
+  // =========================================================================
+  async function renderCaja(contenedor) {
+    Estado.turno = await ApiService.Turnos.turnoAbiertoDe(Estado.usuario.id);
+    const historial = await ApiService.Turnos.listarTurnos();
+
+    contenedor.innerHTML = `
+      <div class="tarjeta" style="margin-bottom:20px;">
+        ${Estado.turno ? `
+          <h3 style="margin-bottom:14px;">Turno abierto — fondo inicial ${formatoMoneda(Estado.turno.fondo_inicial)}</h3>
+          <div class="grid-kpi" style="margin-bottom:16px;">
+            <div class="kpi"><div class="etiqueta">Ventas del turno</div><div class="valor">${formatoMoneda(Estado.turno.total_ventas)}</div></div>
+            <div class="kpi positivo"><div class="etiqueta">Ingresos extra</div><div class="valor">${formatoMoneda(Estado.turno.total_ingresos)}</div></div>
+            <div class="kpi alerta"><div class="etiqueta">Egresos</div><div class="valor">${formatoMoneda(Estado.turno.total_egresos)}</div></div>
+          </div>
+          <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:16px;">
+            <div style="flex:1; min-width:220px;">
+              <label>Registrar movimiento de caja</label>
+              <div style="display:flex; gap:8px;">
+                <select id="tipo-movimiento"><option value="ingreso">Ingreso</option><option value="egreso">Egreso</option></select>
+                <input id="monto-movimiento" type="number" step="0.01" placeholder="Monto">
+              </div>
+              <input id="concepto-movimiento" placeholder="Concepto" style="margin-top:8px;">
+              <button class="btn btn-secundario" style="margin-top:8px;" id="btn-mov-caja">Registrar</button>
+            </div>
+            <div style="flex:1; min-width:220px;">
+              <label for="efectivo-contado">Cerrar turno — efectivo contado en caja</label>
+              <input id="efectivo-contado" type="number" step="0.01">
+              <button class="btn btn-primario" style="margin-top:8px;" id="btn-cerrar-turno">Cerrar turno (corte parcial)</button>
+            </div>
+          </div>
+        ` : `<p style="color:var(--text-dim)">No tienes un turno abierto. Ábrelo desde <a style="color:var(--accent); cursor:pointer;" onclick="navegarA('pos')">Punto de venta</a>.</p>`}
+      </div>
+
+      ${Estado.usuario.rol === 'administrador' ? `
+        <div class="tarjeta" style="margin-bottom:20px;">
+          <h3 style="margin-bottom:10px;">Corte total del día</h3>
+          <p style="color:var(--text-dim); font-size:14px; margin-bottom:12px;">Cierra la operación del día y genera el resumen consolidado de todas las cajas.</p>
+          <button class="btn btn-peligro" id="btn-corte-diario">Generar corte total del día</button>
+          <div id="resultado-corte-diario" style="margin-top:14px;"></div>
+        </div>` : ''}
+
+      <div class="tarjeta">
+        <h3 style="margin-bottom:14px;">Historial de turnos</h3>
+        <table>
+          <thead><tr><th>Abierto</th><th>Fondo</th><th>Ventas</th><th>Estado</th><th>Diferencia</th></tr></thead>
+          <tbody>
+            ${historial.map(t => `
+              <tr>
+                <td>${new Date(t.abierto_en).toLocaleString('es-MX')}</td>
+                <td>${formatoMoneda(t.fondo_inicial)}</td>
+                <td>${formatoMoneda(t.total_ventas)}</td>
+                <td>${t.estado === 'abierto' ? '<span class="badge ok">Abierto</span>' : '<span class="badge bajo">Cerrado</span>'}</td>
+                <td>${t.diferencia !== null ? formatoMoneda(t.diferencia) : '—'}</td>
+              </tr>`).join('') || '<tr><td colspan="5" style="color:var(--text-dim)">Sin turnos registrados</td></tr>'}
+          </tbody>
+        </table>
+      </div>`;
+
+    if (Estado.turno) {
+      $('#btn-mov-caja').addEventListener('click', async () => {
+        const tipo = $('#tipo-movimiento').value, monto = $('#monto-movimiento').value, concepto = $('#concepto-movimiento').value;
+        if (!monto || Number(monto) <= 0) return alert('Ingresa un monto válido');
+        await ApiService.Turnos.registrarMovimiento(Estado.turno.id, tipo, monto, concepto);
+        renderCaja(contenedor);
+      });
+      $('#btn-cerrar-turno').addEventListener('click', async () => {
+        const contado = $('#efectivo-contado').value;
+        if (contado === '') return alert('Ingresa el efectivo contado');
+        const cerrado = await ApiService.Turnos.cerrar(Estado.turno.id, contado);
+        alert(`Turno cerrado. Diferencia: ${formatoMoneda(cerrado.diferencia)}`);
+        renderCaja(contenedor);
+      });
+    }
+    const botonCorteDiario = $('#btn-corte-diario');
+    if (botonCorteDiario) {
+      botonCorteDiario.addEventListener('click', async () => {
+        const resumen = await ApiService.Turnos.corteDiario();
+        $('#resultado-corte-diario').innerHTML = `
+          <div class="tarjeta" style="background:var(--surface-alt);">
+            <p>Total del día: <b>${formatoMoneda(resumen.total_ventas)}</b></p>
+            <p>Efectivo: ${formatoMoneda(resumen.total_efectivo)} · Tarjeta: ${formatoMoneda(resumen.total_tarjeta)} · Transferencia: ${formatoMoneda(resumen.total_transferencia)}</p>
+            <p>Turnos del día: ${resumen.numero_turnos}</p>
+          </div>`;
+      });
+    }
+  }
+
+  // =========================================================================
+  // VISTA: INVENTARIO
+  // =========================================================================
+  async function renderInventario(contenedor, filtro = '') {
+    const [productos, categorias] = await Promise.all([ApiService.Productos.listar({ buscar: filtro }), ApiService.Productos.categorias()]);
+    const puedeEditar = ['administrador', 'almacen'].includes(Estado.usuario.rol);
+
+    contenedor.innerHTML = `
+      <div class="barra-busqueda">
+        <input id="buscar-producto" placeholder="Buscar por nombre o código de barras…" value="${filtro}">
+        ${puedeEditar ? '<button class="btn btn-primario" id="btn-nuevo-producto">+ Nuevo producto</button>' : ''}
+      </div>
+      <div class="tarjeta">
+        <table>
+          <thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Precio venta</th><th>Stock</th><th>Estado</th>${puedeEditar ? '<th></th>' : ''}</tr></thead>
+          <tbody>
+            ${productos.map(p => `
+              <tr>
+                <td style="font-family:var(--mono)">${p.codigo_barras}</td>
+                <td>${p.nombre}</td>
+                <td>${p.categoria || '—'}</td>
+                <td>${formatoMoneda(p.precio_venta)}</td>
+                <td>${p.stock_actual}</td>
+                <td>${p.stock_actual <= p.stock_minimo ? '<span class="badge bajo">Bajo stock</span>' : '<span class="badge ok">Normal</span>'}</td>
+                ${puedeEditar ? `<td style="display:flex; gap:6px;">
+                  <button class="btn btn-secundario btn-sm" onclick="abrirModalEntrada(${p.id}, '${p.nombre.replace(/'/g, "\\'")}')">+ Stock</button>
+                  <button class="btn btn-secundario btn-sm" onclick="abrirModalProducto(${p.id})">Editar</button>
+                  <button class="btn btn-peligro btn-sm" onclick="eliminarProducto(${p.id})">Eliminar</button>
+                </td>` : ''}
+              </tr>`).join('') || `<tr><td colspan="${puedeEditar ? 7 : 6}" style="color:var(--text-dim)">Sin productos que coincidan</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div id="zona-modales"></div>`;
+
+    $('#buscar-producto').addEventListener('input', (evento) => renderInventario(contenedor, evento.target.value));
+    const botonNuevo = $('#btn-nuevo-producto');
+    if (botonNuevo) botonNuevo.addEventListener('click', () => abrirModalProducto(null));
+
+    window._productosCache = productos.concat(await ApiService.Productos.listar({}));
+  }
+
+  async function abrirModalProducto(id) {
+    const productos = await ApiService.Productos.listar({});
+    const producto = id ? productos.find(p => p.id === id) : null;
+    $('#zona-modales').innerHTML = `
+      <div class="overlay"><div class="modal">
+        <h2>${producto ? 'Editar producto' : 'Nuevo producto'}</h2>
+        <div class="campo"><label>Código de barras</label><input id="m-codigo" value="${producto ? producto.codigo_barras : ''}"></div>
+        <div class="campo"><label>Nombre</label><input id="m-nombre" value="${producto ? producto.nombre : ''}"></div>
+        <div class="campo"><label>Categoría</label><input id="m-categoria" value="${producto ? producto.categoria || '' : ''}"></div>
+        <div class="campo"><label>Precio de compra</label><input id="m-compra" type="number" step="0.01" value="${producto ? producto.precio_compra : 0}"></div>
+        <div class="campo"><label>Precio de venta</label><input id="m-venta" type="number" step="0.01" value="${producto ? producto.precio_venta : 0}"></div>
+        <div class="campo"><label>Stock mínimo (para alertas)</label><input id="m-stock-min" type="number" value="${producto ? producto.stock_minimo : 5}"></div>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="btn btn-primario" id="btn-guardar-producto">Guardar</button>
+          <button class="btn btn-secundario" onclick="cerrarModal()">Cancelar</button>
+        </div>
+      </div></div>`;
+
+    $('#btn-guardar-producto').addEventListener('click', async () => {
+      const datos = {
+        codigo_barras: $('#m-codigo').value.trim(),
+        nombre: $('#m-nombre').value.trim(),
+        categoria: $('#m-categoria').value.trim(),
+        precio_compra: Number($('#m-compra').value),
+        precio_venta: Number($('#m-venta').value),
+        stock_minimo: Number($('#m-stock-min').value)
+      };
+      if (!datos.codigo_barras || !datos.nombre) return alert('Código y nombre son obligatorios');
+      if (producto) await ApiService.Productos.actualizar(producto.id, datos);
+      else await ApiService.Productos.crear(datos);
+      cerrarModal();
+      renderInventario($('#vista-contenido'));
+    });
+  }
+
+  function abrirModalEntrada(productoId, nombreProducto) {
+    $('#zona-modales').innerHTML = `
+      <div class="overlay"><div class="modal">
+        <h2>Entrada de mercancía — ${nombreProducto}</h2>
+        <div class="campo"><label>Cantidad que entra al almacén</label><input id="e-cantidad" type="number" min="1" value="1"></div>
+        <div class="campo"><label>Motivo</label><input id="e-motivo" placeholder="Compra a proveedor, devolución, etc."></div>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="btn btn-primario" id="btn-guardar-entrada">Registrar entrada</button>
+          <button class="btn btn-secundario" onclick="cerrarModal()">Cancelar</button>
+        </div>
+      </div></div>`;
+    $('#btn-guardar-entrada').addEventListener('click', async () => {
+      const cantidad = Number($('#e-cantidad').value);
+      if (!cantidad || cantidad <= 0) return alert('Ingresa una cantidad válida');
+      await ApiService.Productos.registrarEntrada(productoId, cantidad, $('#e-motivo').value, Estado.usuario.id);
+      cerrarModal();
+      renderInventario($('#vista-contenido'));
+    });
+  }
+
+  async function eliminarProducto(id) {
+    if (!confirm('¿Dar de baja este producto?')) return;
+    await ApiService.Productos.eliminar(id);
+    renderInventario($('#vista-contenido'));
+  }
+
+  function cerrarModal() { const zona = $('#zona-modales'); if (zona) zona.innerHTML = ''; }
+
+  // =========================================================================
+  // VISTA: USUARIOS (solo administrador)
+  // =========================================================================
+  async function renderUsuarios(contenedor) {
+    const usuarios = (await ApiService.Usuarios.listar()).filter(u => u.activo);
+    contenedor.innerHTML = `
+      <div class="barra-busqueda"><button class="btn btn-primario" id="btn-nuevo-usuario">+ Nuevo usuario</button></div>
+      <div class="tarjeta">
+        <table>
+          <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th></th></tr></thead>
+          <tbody>
+            ${usuarios.map(u => `
+              <tr>
+                <td>${u.nombre_completo}</td>
+                <td style="font-family:var(--mono)">${u.usuario}</td>
+                <td>${u.rol}</td>
+                <td style="display:flex; gap:6px;">
+                  <button class="btn btn-secundario btn-sm" onclick="abrirModalUsuario(${u.id})">Editar</button>
+                  ${u.id !== Estado.usuario.id ? `<button class="btn btn-peligro btn-sm" onclick="eliminarUsuario(${u.id})">Dar de baja</button>` : ''}
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div id="zona-modales"></div>`;
+    $('#btn-nuevo-usuario').addEventListener('click', () => abrirModalUsuario(null));
+  }
+
+  async function abrirModalUsuario(id) {
+    const usuarios = await ApiService.Usuarios.listar();
+    const usuario = id ? usuarios.find(u => u.id === id) : null;
+    $('#zona-modales').innerHTML = `
+      <div class="overlay"><div class="modal">
+        <h2>${usuario ? 'Editar usuario' : 'Nuevo usuario'}</h2>
+        <div class="campo"><label>Nombre completo</label><input id="u-nombre" value="${usuario ? usuario.nombre_completo : ''}"></div>
+        <div class="campo"><label>Usuario</label><input id="u-usuario" value="${usuario ? usuario.usuario : ''}" ${usuario ? 'disabled' : ''}></div>
+        <div class="campo"><label>Contraseña ${usuario ? '(dejar en blanco para no cambiar)' : ''}</label><input id="u-password" type="password"></div>
+        <div class="campo"><label>Rol</label>
+          <select id="u-rol">
+            <option value="administrador" ${usuario && usuario.rol === 'administrador' ? 'selected' : ''}>Administrador</option>
+            <option value="cajero" ${usuario && usuario.rol === 'cajero' ? 'selected' : ''}>Cajero</option>
+            <option value="almacen" ${usuario && usuario.rol === 'almacen' ? 'selected' : ''}>Almacén</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button class="btn btn-primario" id="btn-guardar-usuario">Guardar</button>
+          <button class="btn btn-secundario" onclick="cerrarModal()">Cancelar</button>
+        </div>
+      </div></div>`;
+
+    $('#btn-guardar-usuario').addEventListener('click', async () => {
+      const nombre_completo = $('#u-nombre').value.trim();
+      const rol = $('#u-rol').value;
+      const password = $('#u-password').value;
+      if (!nombre_completo) return alert('El nombre es obligatorio');
+      try {
+        if (usuario) await ApiService.Usuarios.actualizar(usuario.id, { nombre_completo, rol, ...(password ? { password } : {}) });
+        else {
+          const nombreUsuario = $('#u-usuario').value.trim();
+          if (!nombreUsuario || !password) return alert('Usuario y contraseña son obligatorios');
+          await ApiService.Usuarios.crear({ nombre_completo, usuario: nombreUsuario, rol, password });
+        }
+        cerrarModal();
+        renderUsuarios($('#vista-contenido'));
+      } catch (err) { alert(err.message); }
+    });
+  }
+
+  async function eliminarUsuario(id) {
+    if (!confirm('¿Dar de baja a este usuario?')) return;
+    await ApiService.Usuarios.eliminar(id);
+    renderUsuarios($('#vista-contenido'));
+  }
+
+  // =========================================================================
+  // VISTA: VERIFICADOR DE PRECIOS (pantalla completa, sin sidebar)
+  // =========================================================================
+  async function plantillaVerificador() {
+    const config = await ApiService.Configuracion.obtener();
+    return `
+      <div class="pantalla-verificador">
+        <button class="btn btn-secundario" style="position:absolute; top:20px; left:20px;" onclick="navegarA('${Estado.usuario.rol === 'administrador' ? 'dashboard' : (Estado.usuario.rol === 'cajero' ? 'pos' : 'inventario')}')">← Salir</button>
+        <h2 style="color:var(--text-dim); font-weight:500;">${config.nombre_tienda || 'Verificador de precios'}</h2>
+        <input id="v-codigo" placeholder="Escanea el producto…" autofocus>
+        <div id="v-resultado"></div>
+      </div>`;
+  }
+
+  function adjuntarEventosVerificador() {
+    $('#v-codigo').addEventListener('keydown', async (evento) => {
+      if (evento.key !== 'Enter') return;
+      const codigo = evento.target.value.trim();
+      evento.target.value = '';
+      if (!codigo) return;
+      try {
+        const producto = await ApiService.Productos.buscarPorCodigo(codigo);
+        $('#v-resultado').innerHTML = `<div class="nombre-producto">${producto.nombre}</div><div class="precio-producto">${formatoMoneda(producto.precio_venta)}</div>`;
+      } catch (err) {
+        $('#v-resultado').innerHTML = `<div class="nombre-producto" style="color:var(--danger)">Producto no encontrado</div>`;
+      }
+    });
+  }
+
+  // =========================================================================
+  // VISTA: CONFIGURACIÓN (solo administrador)
+  // =========================================================================
+  async function renderConfiguracion(contenedor) {
+    const config = await ApiService.Configuracion.obtener();
+    contenedor.innerHTML = `
+      <div class="tarjeta" style="max-width:480px;">
+        <div class="campo"><label>Nombre de la tienda</label><input id="c-nombre" value="${config.nombre_tienda || ''}"></div>
+        <div class="campo"><label>Dirección</label><input id="c-direccion" value="${config.direccion || ''}"></div>
+        <div class="campo"><label>Teléfono</label><input id="c-telefono" value="${config.telefono || ''}"></div>
+        <div class="campo"><label>Moneda</label><input id="c-moneda" value="${config.moneda || 'MXN'}"></div>
+        <button class="btn btn-primario" id="btn-guardar-config">Guardar cambios</button>
+        <div id="mensaje-config" style="margin-top:10px; color:var(--success); font-size:13px;"></div>
+      </div>`;
+    $('#btn-guardar-config').addEventListener('click', async () => {
+      await ApiService.Configuracion.actualizar({
+        nombre_tienda: $('#c-nombre').value.trim(),
+        direccion: $('#c-direccion').value.trim(),
+        telefono: $('#c-telefono').value.trim(),
+        moneda: $('#c-moneda').value.trim()
+      });
+      $('#mensaje-config').textContent = 'Cambios guardados correctamente';
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Arranque de la aplicación
+  // ---------------------------------------------------------------------
+  sembrarDatosIniciales();
+  render();
+</script>
+</body>
+</html>
